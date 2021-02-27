@@ -44,6 +44,8 @@ class Interface:
         if all([self.db_table_name, self.db_name]):
             self.add_button(self.root, 'Add Book', 20, 1, 1, 0, lambda: self.add_books())
             self.add_button(self.root, 'Search Books', 20, 1, 2, 0, lambda: self.search_books(self.__full_lib))
+            self.add_button(self.root, 'Export to JSON', 20, 1, 6, 0, lambda: self.save_db_JSON())
+            self.add_button(self.root, 'Export to CSV', 20, 1, 6, 1, lambda: self.save_db_CSW())
             self.__full_lib = self.import_func_db()
         self.add_label(self.root, "input path to the dataBase", 20, 1, 3, 0)
         db_path_text_box = self.add_textbox(self.root, self.db_name, 20, 2, 3, 1)
@@ -53,6 +55,12 @@ class Interface:
             db_path_text_box.get("1.0", 'end-1c'), tbl_text_box.get("1.0", 'end-1c')))
         self.log = f'The main screen created on {time.asctime()}\n'
         self.root.mainloop()
+
+    def save_db_JSON(self):
+        pass
+
+    def save_db_CSW(self):
+        pass
 
     @staticmethod
     def add_label(area, txt: str, w: int, h: int, r: int, c: int):
@@ -210,8 +218,11 @@ class Interface:
         self.add_button(main_frame, 'sort by description', 12, 1, 3, 3,
                         lambda: self.search_books(sorted(show_lib, key=lambda book: book.book_desc)))
 
-        self.add_button(main_frame, 'Search book', 12, 1, 4, 0, lambda: self.lib_filter())
-        self.add_button(main_frame, 'Clear search', 12, 1, 4, 1, lambda: self.search_books(self.__full_lib))
+        self.add_button(main_frame, 'import from JSON', 12, 1, 4, 0, lambda: self.import_JSON())
+        self.add_button(main_frame, 'Import from CSV', 12, 1, 4, 1, lambda: self.import_CSV())
+
+        self.add_button(main_frame, 'Search book', 12, 1, 5, 0, lambda: self.lib_filter())
+        self.add_button(main_frame, 'Clear search', 12, 1, 5, 1, lambda: self.search_books(self.__full_lib))
         table_frame = tk.Frame(self.root)
         canvas = tk.Canvas(table_frame)
         y_scrollbar = tk.Scrollbar(table_frame, orient="vertical", command=canvas.yview)
@@ -235,12 +246,29 @@ class Interface:
                                                            show_lib[r].book_auth,
                                                            show_lib[r].book_year,
                                                            show_lib[r].book_desc))
+            self.add_button(scrollable_frame, 'To JSON', 6, 2, rw, 7,
+                            lambda r=rw: self.book_to_JSON(show_lib[r].book_name,
+                                                           show_lib[r].book_auth,
+                                                           show_lib[r].book_year,
+                                                           show_lib[r].book_desc))
         table_frame.pack(fill="both")
         canvas.pack(side="left", fill="both", expand=True)
         y_scrollbar.pack(side="right", fill="y")
         if self.__debug_mode:
             self.log = f'search books screen created on {time.asctime()}\n'
         self.root.mainloop()
+
+    def book_to_JSON(self, nm: str, auth: str, yr: int, desc: str):
+        pass
+
+    def import_JSON(self):
+        pass
+
+    def import_CSV(self):
+        pass
+
+    def check_path(self, value):
+        return True
 
     class pop_up:
         """
