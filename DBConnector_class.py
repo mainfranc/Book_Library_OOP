@@ -49,8 +49,8 @@ class DBConnector:
         try:
             self.curs_.execute(f"SELECT ID, BookName, BookAuthor, BookYear, BookDesc FROM {self.db_table_name};")
             if self.conn:
-                self.interface.log += f'''database {self.db_name} with table {self.db_table_name} 
-are ready on {time.asctime}\n'''
+                self.interface.log = f'''database {self.db_name} with table {self.db_table_name} 
+are ready on {time.asctime()}\n'''
                 self.interface.pop_up("database connected", self.interface)
         except sqlite3.OperationalError:
             self.db_table_name = ''
@@ -69,7 +69,7 @@ are ready on {time.asctime}\n'''
                                 AND BookAuthor LIKE '{auth}'
                                 AND BookYear LIKE '{yr}'
                                 AND BookDesc LIKE '{desc}';"""))
-            self.interface.log += f'data got from the db on {time.asctime}\n'
+            self.interface.log = f'data got from the db on {time.asctime()}\n'
 
         return result
 
@@ -84,7 +84,7 @@ are ready on {time.asctime}\n'''
         """
         query_string = self.construct_sql_sting(nm=nm, auth=auth, yr=yr, desc=desc, type=0)
         self.change_db(query_string)
-        self.interface.log += f'data appended to the db on {time.asctime}\n'
+        self.interface.log = f'data appended to the db on {time.asctime()}\n'
 
     def change_entry(self, nm: str, auth: str, yr: int, desc: str, id_: int):
         """
@@ -98,7 +98,7 @@ are ready on {time.asctime}\n'''
         """
         query_string = self.construct_sql_sting(nm=nm, auth=auth, yr=yr, desc=desc, type=1, ID_to_change=id_)
         self.change_db(query_string)
-        self.interface.log += f'data changed in the db on {time.asctime}\n'
+        self.interface.log = f'data changed in the db on {time.asctime()}\n'
 
     def remove_entry(self, id_: int):
         """
@@ -108,7 +108,7 @@ are ready on {time.asctime}\n'''
         """
         query_string = self.construct_sql_sting(type=1, ID_to_change=id_)
         self.change_db(query_string)
-        self.interface.log += f'data removed from the db on {time.asctime}\n'
+        self.interface.log = f'data removed from the db on {time.asctime()}\n'
 
     def construct_sql_sting(self,
                             nm=None, auth=None, yr=None, desc=None, type=None, ID_to_change=None):

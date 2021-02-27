@@ -21,7 +21,7 @@ class Interface:
         self._log = ''
         self.__debug_mode = debug_mode
         if self.__debug_mode:
-            self.log += f'The interface object created on {time.asctime}\n'
+            self.log = f'The interface object created on {time.asctime()}\n'
 
     @property
     def log(self):
@@ -30,6 +30,8 @@ class Interface:
     @log.setter
     def log(self, value: str):
         self._log = value
+        with open('log.txt', 'a') as log_file:
+            log_file.write(value)
 
     # Interface Methods
     def main(self):
@@ -49,7 +51,7 @@ class Interface:
         tbl_text_box = self.add_textbox(self.root, self.db_table_name, 20, 1, 4, 1)
         self.add_button(self.root, 'Set DataBase Source', 20, 1, 5, 0, lambda: self.set_db_source(
             db_path_text_box.get("1.0", 'end-1c'), tbl_text_box.get("1.0", 'end-1c')))
-        self.log += f'The main screen created on {time.asctime}\n'
+        self.log = f'The main screen created on {time.asctime()}\n'
         self.root.mainloop()
 
     @staticmethod
@@ -114,7 +116,7 @@ class Interface:
         self.db_table_name = table_name
         self.db_conn = DBConnector(self)
         self.db_conn.connect_to_the_db()
-        self.log += f'Connection established on {time.asctime}\n'
+        self.log = f'Connection established on {time.asctime()}\n'
 
     def back_to_main(self):
         """
@@ -161,7 +163,7 @@ class Interface:
         self.create_header(self.root)
         self.add_button(self.root, 'Add book', 12, 1, 3, 0, lambda: self.lib_append())
         if self.__debug_mode:
-            self.log += f'add books screen created on {time.asctime}\n'
+            self.log = f'add books screen created on {time.asctime()}\n'
         self.root.mainloop()
 
     def edit_screen(self, name_: str, auth_: str, year_: str, desc_: str):
@@ -184,7 +186,7 @@ class Interface:
         self.add_button(self.root, 'Edit entry', 12, 1, 3, 0, lambda: self.change_entry(name_, auth_,
                                                                                         year_, desc_))
         if self.__debug_mode:
-            self.log += f'edit screen created on {time.asctime}\n'
+            self.log = f'edit screen created on {time.asctime()}\n'
 
     def search_books(self, show_lib: list):
         """
@@ -237,7 +239,7 @@ class Interface:
         canvas.pack(side="left", fill="both", expand=True)
         y_scrollbar.pack(side="right", fill="y")
         if self.__debug_mode:
-            self.log += f'search books screen created on {time.asctime}\n'
+            self.log = f'search books screen created on {time.asctime()}\n'
         self.root.mainloop()
 
     class pop_up:
@@ -256,7 +258,7 @@ class Interface:
             label.pack(side="top", fill="x", pady=10)
             but_ = tk.Button(self.pop_up_root, text="Ok", command=lambda: self.destroy_addition(obj_, inf_))
             but_.pack()
-            obj_.log += f'{inf_} on {time.asctime}\n'
+            obj_.log += f'{inf_} on {time.asctime()}\n'
             self.pop_up_root.mainloop()
 
         def destroy_addition(self, obj_, inf_):
@@ -290,7 +292,7 @@ class Interface:
                 self.__full_lib.append(book_to_add)
                 self.__full_lib = sorted(self.__full_lib, key=lambda book: book.book_name)
                 self.clear_textboxes()
-                self.log += f'the book {book_to_add.book_name} added on {time.asctime}\n'
+                self.log = f'the book {book_to_add.book_name} added on {time.asctime()}\n'
         else:
             self.pop_up("Please fill book name and author fields", self)
 
@@ -312,7 +314,7 @@ class Interface:
                     and desc in book_.book_desc]):
                 lib_to_show.append(book_)
         if self.__debug_mode:
-            self.log += f'lib filtered on {time.asctime}\n'
+            self.log = f'lib filtered on {time.asctime()}\n'
         self.search_books(lib_to_show)
 
     def change_entry(self, name_old: str, auth_old: str, year_old: str, desc_old: str):
@@ -339,7 +341,7 @@ class Interface:
                 book_id = self.__full_lib[ind_].bookID
                 self.__full_lib[ind_] = Book(book_id, nm, auth, yr, des)
                 self.db_conn.change_entry(nm, auth, yr, des, book_id)
-                self.log += f'the book {nm} changed on {time.asctime}\n'
+                self.log = f'the book {nm} changed on {time.asctime()}\n'
                 self.search_books(self.__full_lib)
         else:
             self.pop_up("Please fill book name and author fields", self)
@@ -360,7 +362,7 @@ class Interface:
         book_id = self.__full_lib[ind_].bookID
         self.db_conn.remove_entry(book_id)
         self.__full_lib.pop(ind_)
-        self.log += f'the book {name_} removed on {time.asctime}\n'
+        self.log = f'the book {name_} removed on {time.asctime()}\n'
         self.search_books(self.__full_lib)
 
     @staticmethod
@@ -406,5 +408,5 @@ class Interface:
         for cur_row in lst_from_sql:
             result.append(Book(cur_row[0], cur_row[1], cur_row[2], cur_row[3], cur_row[4]))
         if self.__debug_mode:
-            self.log += f'the data imported form the database on {time.asctime}\n'
+            self.log = f'the data imported form the database on {time.asctime()}\n'
         return result
