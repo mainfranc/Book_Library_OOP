@@ -1,7 +1,10 @@
 
 class Book:
+    """
+    Book object class for storage in interface full_lib
+    """
     def __init__(self, id: int, name: str, auth: str, year: int, desc: str):
-        self._bookID =  id
+        self._bookID = id
         self._book_name = name
         self._book_auth = auth
         self._book_year = year

@@ -8,6 +8,7 @@ import json
 
 
 class DBConnector:
+    """database connector class. contains all methods to work with sqlite3 database"""
     def __init__(self, obj_):
         self.interface = obj_
         self.db_name = self.interface.db_name
@@ -51,6 +52,10 @@ class DBConnector:
             self.interface.db_table_name = ''
 
     def connect_to_the_db(self):
+        """
+        initial database connection. crates the table if the signed one does not exists
+        :return: None
+        """
         if self.db_name and self.db_table_name:
             with closing(sqlite3.connect(self.db_name)) as self.conn:
                 self.curs_ = self.conn.cursor()
@@ -67,6 +72,10 @@ class DBConnector:
             self.interface.pop_up('please, set the correct db and table name', self.interface)
 
     def check_table(self):
+        """
+        check table procedure, to check the columns in existing table are correct
+        :return: None
+        """
         try:
             self.curs_.execute(f"SELECT ID, BookName, BookAuthor, BookYear, BookDesc FROM {self.db_table_name};")
             if self.conn:
@@ -78,6 +87,14 @@ are ready on {time.asctime()}\n'''
             self.interface.pop_up("Not all required columns exists in the table in database", self.interface)
 
     def read_db(self, nm: str, auth: str, yr: int, desc: str):
+        """
+        read database method
+        :param nm: book name part string
+        :param auth:  book author part string
+        :param yr: book year part string
+        :param desc: book description part string
+        :return: list from the query
+        """
         nm = nm if nm != '' else '%'
         auth = auth if auth != '' else '%'
         yr = yr if yr != 0 else '%'
@@ -169,6 +186,10 @@ are ready on {time.asctime()}\n'''
         return result
 
     def load_db(self):
+        """
+        loads the database to the list for JSON/CSV export in appr. format
+        :return: list
+        """
         lst_from_sql = sorted(self.read_db('', '', 0, ''))
         result = []
         for cur_row in lst_from_sql:
@@ -179,11 +200,19 @@ are ready on {time.asctime()}\n'''
         return result
 
     def export_to_json(self):
+        """
+        overall export to JSON procedure trigerred from interface
+        :return: None
+        """
         result = self.load_db()
         with open(f"{self.db_table_name}_{time.strftime('%d_%b_%Y', time.gmtime())}.json", 'w') as json_file:
             json.dump(result, json_file)
 
     def export_to_csv(self):
+        """
+        overall export to CSV procedure trigerred from interface
+        :return: None
+        """
         result = self.load_db()
         with open(f"{self.db_table_name}_{time.strftime('%d_%b_%Y', time.gmtime())}.csv", 'w', newline='') as csvfile:
             columns = ['name', 'author', 'year', 'description']

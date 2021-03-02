@@ -7,6 +7,9 @@ import json
 
 
 class Interface:
+    """
+    Class for an interface creation and library operations
+    """
     def __init__(self, debug_mode=False):
         self.db_name = ''
         self.db_table_name = ''
@@ -56,12 +59,6 @@ class Interface:
             db_path_text_box.get("1.0", 'end-1c'), tbl_text_box.get("1.0", 'end-1c')))
         self.log = f'The main screen created on {time.asctime()}\n'
         self.root.mainloop()
-
-    def save_db_json(self):
-        pass
-
-    def save_db_csv(self):
-        pass
 
     @staticmethod
     def add_label(area, txt: str, w: int, h: int, r: int, c: int):
@@ -261,9 +258,17 @@ class Interface:
         self.root.mainloop()
 
     def export_json(self):
+        """
+        enters DBconnector JSON export procedure
+        :return: None
+        """
         self.db_conn.export_to_json()
 
     def export_csv(self):
+        """
+        enters DBconnector CSV export procedure
+        :return: None
+        """
         self.db_conn.export_to_csv()
 
     class pop_up:
@@ -321,6 +326,11 @@ class Interface:
             self.pop_up("Please fill book name and author fields", self)
 
     def lib_append_from_json(self, path):
+        """
+        overall method to import book from JSON file
+        :param path: path to the file
+        :return: None
+        """
         if os.path.isfile(path):
             with open(path) as json_file:
                 data = json.load(json_file)
@@ -334,6 +344,12 @@ class Interface:
             self.pop_up("JSON file doesn't exists, please choose the correct file", self)
 
     def import_single_from_json(self, dct, path):
+        """
+        appends the books from json file
+        :param dct: eac book dictionary
+        :param path: path to the JSON file
+        :return: None
+        """
         if not isinstance(dct, dict):
             self.log = f'JSON file {path} contains data in incorrect format {time.asctime()}\n'
             return None
@@ -472,6 +488,10 @@ class Interface:
         return None
 
     def import_func_db(self):
+        """
+        starter function to read the data from database
+        :return: list for full_lib
+        """
         result = []
         lst_from_sql = sorted(self.db_conn.read_db('', '', 0, ''))
         for cur_row in lst_from_sql:
