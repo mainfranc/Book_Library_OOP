@@ -3,6 +3,7 @@ import sqlite3
 from Book_class import *
 import time
 from DBConnector_class import *
+import json
 
 
 class Interface:
@@ -44,8 +45,8 @@ class Interface:
         if all([self.db_table_name, self.db_name]):
             self.add_button(self.root, 'Add Book', 20, 1, 1, 0, lambda: self.add_books())
             self.add_button(self.root, 'Search Books', 20, 1, 2, 0, lambda: self.search_books(self.__full_lib))
-            self.add_button(self.root, 'Export to JSON', 20, 1, 6, 0, lambda: self.save_db_JSON())
-            self.add_button(self.root, 'Export to CSV', 20, 1, 6, 1, lambda: self.save_db_CSW())
+            self.add_button(self.root, 'Export to JSON', 20, 1, 6, 0, lambda: self.export_json())
+            self.add_button(self.root, 'Export to CSV', 20, 1, 6, 1, lambda: self.export_csv())
             self.__full_lib = self.import_func_db()
         self.add_label(self.root, "input path to the dataBase", 20, 1, 3, 0)
         db_path_text_box = self.add_textbox(self.root, self.db_name, 20, 2, 3, 1)
@@ -56,10 +57,10 @@ class Interface:
         self.log = f'The main screen created on {time.asctime()}\n'
         self.root.mainloop()
 
-    def save_db_JSON(self):
+    def save_db_json(self):
         pass
 
-    def save_db_CSW(self):
+    def save_db_csv(self):
         pass
 
     @staticmethod
@@ -170,6 +171,10 @@ class Interface:
         self.root.title('Add book')
         self.create_header(self.root)
         self.add_button(self.root, 'Add book', 12, 1, 3, 0, lambda: self.lib_append())
+        self.add_label(self.root, 'or choose the JSON file', 20, 1, 4, 0)
+        txt_json_path = self.add_textbox(self.root, '', 20, 1, 4, 0)
+        self.add_button(self.root, 'Add book from JSON', 12, 1, 3, 0,
+                        lambda: self.lib_append_from_json(txt_json_path.get("1.0", 'end-1c')))
         if self.__debug_mode:
             self.log = f'add books screen created on {time.asctime()}\n'
         self.root.mainloop()
@@ -218,9 +223,6 @@ class Interface:
         self.add_button(main_frame, 'sort by description', 12, 1, 3, 3,
                         lambda: self.search_books(sorted(show_lib, key=lambda book: book.book_desc)))
 
-        self.add_button(main_frame, 'import from JSON', 12, 1, 4, 0, lambda: self.import_JSON())
-        self.add_button(main_frame, 'Import from CSV', 12, 1, 4, 1, lambda: self.import_CSV())
-
         self.add_button(main_frame, 'Search book', 12, 1, 5, 0, lambda: self.lib_filter())
         self.add_button(main_frame, 'Clear search', 12, 1, 5, 1, lambda: self.search_books(self.__full_lib))
         table_frame = tk.Frame(self.root)
@@ -247,7 +249,7 @@ class Interface:
                                                            show_lib[r].book_year,
                                                            show_lib[r].book_desc))
             self.add_button(scrollable_frame, 'To JSON', 6, 2, rw, 7,
-                            lambda r=rw: self.book_to_JSON(show_lib[r].book_name,
+                            lambda r=rw: self.book_to_json(show_lib[r].book_name,
                                                            show_lib[r].book_auth,
                                                            show_lib[r].book_year,
                                                            show_lib[r].book_desc))
@@ -258,17 +260,11 @@ class Interface:
             self.log = f'search books screen created on {time.asctime()}\n'
         self.root.mainloop()
 
-    def book_to_JSON(self, nm: str, auth: str, yr: int, desc: str):
-        pass
+    def export_json(self):
+        self.db_conn.export_to_json()
 
-    def import_JSON(self):
-        pass
-
-    def import_CSV(self):
-        pass
-
-    def check_path(self, value):
-        return True
+    def export_csv(self):
+        self.db_conn.export_to_csv()
 
     class pop_up:
         """
@@ -323,6 +319,37 @@ class Interface:
                 self.log = f'the book {book_to_add.book_name} added on {time.asctime()}\n'
         else:
             self.pop_up("Please fill book name and author fields", self)
+
+    def lib_append_from_json(self, path):
+        if os.path.isfile(path):
+            with open(path) as json_file:
+                data = json.load(json_file)
+            if isinstance(data, list):
+                for dct in data:
+                    self.import_single_from_json(dct, path)
+            else:
+                self.import_single_from_json(data, path)
+        else:
+            self.log = f'cannot import data from JSON file {path} {time.asctime()}\n'
+            self.pop_up("JSON file doesn't exists, please choose the correct file", self)
+
+    def import_single_from_json(self, dct, path):
+        if not isinstance(dct, dict):
+            self.log = f'JSON file {path} contains data in incorrect format {time.asctime()}\n'
+            return None
+        name_ = dct.get('name', '')
+        auth_ = dct.get('author', '')
+        year_ = int(dct.get('year', ''))
+        desc_ = dct.get('description', '')
+        if all([name_, auth_, year_]):
+            self.__book_name_text.insert('end-1c', name_)
+            self.__book_author_text.insert('end-1c', auth_)
+            self.__book_year_text.insert('end-1c', year_)
+            self.__book_desc_text.insert('end-1c', desc_)
+            self.lib_append()
+        else:
+            self.log = f'JSON file {path} contains incorrect columns {time.asctime()}\n'
+            self.pop_up("the naming in JSON file is incorrect", self)
 
     def lib_filter(self):
         """
@@ -393,6 +420,20 @@ class Interface:
         self.log = f'the book {name_} removed on {time.asctime()}\n'
         self.search_books(self.__full_lib)
 
+    def book_to_json(self, nm: str, auth: str, yr: int, desc: str):
+        """
+        writes the json data into the separate file
+        :param nm: book name
+        :param auth: book author
+        :param yr: book year
+        :param desc: book description
+        :return: None
+        """
+        dict_to_write = {'name': nm, 'author': auth, 'year': yr, 'description': desc}
+        with open(f'{nm}.txt', 'w') as f:
+            json.dump(dict_to_write, f)
+        self.log = f'the book {nm} moved to the JSON file {time.asctime()}\n'
+
     @staticmethod
     def joined_list(lst: list):
         """
@@ -432,7 +473,7 @@ class Interface:
 
     def import_func_db(self):
         result = []
-        lst_from_sql = sorted(self.db_conn.read_db('', '', '', ''))
+        lst_from_sql = sorted(self.db_conn.read_db('', '', 0, ''))
         for cur_row in lst_from_sql:
             result.append(Book(cur_row[0], cur_row[1], cur_row[2], cur_row[3], cur_row[4]))
         if self.__debug_mode:

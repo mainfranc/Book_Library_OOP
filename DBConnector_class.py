@@ -2,6 +2,9 @@ from Interface_code_OOP import *
 import sqlite3
 from contextlib import closing
 import time
+import os
+import csv
+import json
 
 
 class DBConnector:
@@ -18,6 +21,17 @@ class DBConnector:
 
     @db_name.setter
     def db_name(self, value: str):
+        if '/' in value or '\\' in value:
+            counter = -1
+            while value[counter] != '/' and value[counter] != '\\':
+                counter -= 1
+            path = value[:counter]
+            value = value[counter + 1:]
+            if not os.path.exists(path) or counter == -1:
+                self.interface.pop_up("The path doesn't exist or the file name not specified", self.interface)
+                self._db_name = ''
+                self.interface.db_name = ''
+                return None
         if value[-3:] != '.db':
             value += '.db'
         self._db_name = value
@@ -29,21 +43,28 @@ class DBConnector:
 
     @db_table_name.setter
     def db_table_name(self, value: str):
-        self._db_table_name = value
-        self.interface.db_table_name = value
+        if value:
+            self._db_table_name = value
+            self.interface.db_table_name = value
+        else:
+            self._db_table_name = ''
+            self.interface.db_table_name = ''
 
     def connect_to_the_db(self):
-        with closing(sqlite3.connect(self.db_name)) as self.conn:
-            self.curs_ = self.conn.cursor()
-            self.curs_.execute(f"""
-                CREATE TABLE IF NOT EXISTS {self.db_table_name} (
-                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    BookName TEXT,
-                    BookAuthor TEXT,
-                    BookYear INTEGER,
-                    BookDesc TEXT);
-            """)
-            self.check_table()
+        if self.db_name and self.db_table_name:
+            with closing(sqlite3.connect(self.db_name)) as self.conn:
+                self.curs_ = self.conn.cursor()
+                self.curs_.execute(f"""
+                    CREATE TABLE IF NOT EXISTS {self.db_table_name} (
+                        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        BookName TEXT,
+                        BookAuthor TEXT,
+                        BookYear INTEGER,
+                        BookDesc TEXT);
+                """)
+                self.check_table()
+        else:
+            self.interface.pop_up('please, set the correct db and table name', self.interface)
 
     def check_table(self):
         try:
@@ -59,7 +80,7 @@ are ready on {time.asctime()}\n'''
     def read_db(self, nm: str, auth: str, yr: int, desc: str):
         nm = nm if nm != '' else '%'
         auth = auth if auth != '' else '%'
-        yr = yr if yr != '' else '%'
+        yr = yr if yr != 0 else '%'
         desc = desc if desc != '' else '%'
         with closing(sqlite3.connect(self.db_name)) as self.conn:
             self.curs_ = self.conn.cursor()
@@ -146,6 +167,30 @@ are ready on {time.asctime()}\n'''
                     DELETE FROM {self.db_table_name}
                     WHERE ID = {ID_to_change};"""
         return result
+
+    def load_db(self):
+        lst_from_sql = sorted(self.read_db('', '', 0, ''))
+        result = []
+        for cur_row in lst_from_sql:
+            result.append({'name': cur_row[1],
+                           'author': cur_row[2],
+                           'year': cur_row[3],
+                           'description': cur_row[4]})
+        return result
+
+    def export_to_json(self):
+        result = self.load_db()
+        with open(f"{self.db_table_name}_{time.strftime('%d_%b_%Y', time.gmtime())}.json", 'w') as json_file:
+            json.dump(result, json_file)
+
+    def export_to_csv(self):
+        result = self.load_db()
+        with open(f"{self.db_table_name}_{time.strftime('%d_%b_%Y', time.gmtime())}.csv", 'w', newline='') as csvfile:
+            columns = ['name', 'author', 'year', 'description']
+            csv_wirter = csv.DictWriter(csvfile, fieldnames=columns, delimiter='\t')
+            csv_wirter.writeheader()
+            csv_wirter.writerows(result)
+
 
     def change_db(self, sql_: str):
         """
