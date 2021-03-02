@@ -1,13 +1,20 @@
 import tkinter as tk
 import sqlite3
-from contextlib import closing
+from Book_class import *
+import time
+from DBConnector_class import *
+import json
 
 
 class Interface:
-    def __init__(self):
+    """
+    Class for an interface creation and library operations
+    """
+    def __init__(self, debug_mode=False):
         self.db_name = ''
         self.db_table_name = ''
         self.db_conn = None
+        self.lastID = 0
         self.__full_lib = []
         self.root = None
         self.__book_name_text = None
@@ -15,11 +22,25 @@ class Interface:
         self.__book_year_text = None
         self.__book_desc_text = None
         self.conn_established = False
+        self._log = ''
+        self.__debug_mode = debug_mode
+        if self.__debug_mode:
+            self.log = f'The interface object created on {time.asctime()}\n'
+
+    @property
+    def log(self):
+        return self._log
+
+    @log.setter
+    def log(self, value: str):
+        self._log = value
+        with open('log.txt', 'a') as log_file:
+            log_file.write(value)
 
     # Interface Methods
     def main(self):
         """
-        main procedure creting the first screen
+        main procedure creating the first screen
         :return:
         """
         self.root = tk.Tk()
@@ -27,6 +48,8 @@ class Interface:
         if all([self.db_table_name, self.db_name]):
             self.add_button(self.root, 'Add Book', 20, 1, 1, 0, lambda: self.add_books())
             self.add_button(self.root, 'Search Books', 20, 1, 2, 0, lambda: self.search_books(self.__full_lib))
+            self.add_button(self.root, 'Export to JSON', 20, 1, 6, 0, lambda: self.export_json())
+            self.add_button(self.root, 'Export to CSV', 20, 1, 6, 1, lambda: self.export_csv())
             self.__full_lib = self.import_func_db()
         self.add_label(self.root, "input path to the dataBase", 20, 1, 3, 0)
         db_path_text_box = self.add_textbox(self.root, self.db_name, 20, 2, 3, 1)
@@ -34,6 +57,7 @@ class Interface:
         tbl_text_box = self.add_textbox(self.root, self.db_table_name, 20, 1, 4, 1)
         self.add_button(self.root, 'Set DataBase Source', 20, 1, 5, 0, lambda: self.set_db_source(
             db_path_text_box.get("1.0", 'end-1c'), tbl_text_box.get("1.0", 'end-1c')))
+        self.log = f'The main screen created on {time.asctime()}\n'
         self.root.mainloop()
 
     @staticmethod
@@ -72,7 +96,7 @@ class Interface:
     @staticmethod
     def add_button(area, txt: str, w: int, h: int, r: int, c: int, func_):
         """
-        add button inth the area
+        add button into the the area
         :param area: area to insert
         :param txt: caption
         :param w: width
@@ -90,13 +114,15 @@ class Interface:
         """
         set the db connection
         :param path: path the the databse. if the database doesn't exists - the new db will be connected
-        :param table_name: table name. if there are no such table in the db - the table with the proper columns will be created
+        :param table_name: table name.
+        if there are no such table in the db - the table with the proper columns will be created
         :return: None
         """
         self.db_name = path
         self.db_table_name = table_name
         self.db_conn = DBConnector(self)
         self.db_conn.connect_to_the_db()
+        self.log = f'Connection established on {time.asctime()}\n'
 
     def back_to_main(self):
         """
@@ -142,6 +168,12 @@ class Interface:
         self.root.title('Add book')
         self.create_header(self.root)
         self.add_button(self.root, 'Add book', 12, 1, 3, 0, lambda: self.lib_append())
+        self.add_label(self.root, 'or choose the JSON file', 20, 1, 4, 0)
+        txt_json_path = self.add_textbox(self.root, '', 20, 1, 4, 0)
+        self.add_button(self.root, 'Add book from JSON', 12, 1, 3, 0,
+                        lambda: self.lib_append_from_json(txt_json_path.get("1.0", 'end-1c')))
+        if self.__debug_mode:
+            self.log = f'add books screen created on {time.asctime()}\n'
         self.root.mainloop()
 
     def edit_screen(self, name_: str, auth_: str, year_: str, desc_: str):
@@ -163,6 +195,8 @@ class Interface:
         self.__book_desc_text.insert('end-1c', desc_)
         self.add_button(self.root, 'Edit entry', 12, 1, 3, 0, lambda: self.change_entry(name_, auth_,
                                                                                         year_, desc_))
+        if self.__debug_mode:
+            self.log = f'edit screen created on {time.asctime()}\n'
 
     def search_books(self, show_lib: list):
         """
@@ -178,7 +212,7 @@ class Interface:
         self.create_header(main_frame)
 
         self.add_button(main_frame, 'sort by name', 12, 1, 3, 0,
-                        lambda: self.search_books(sorted(show_lib,key= lambda book: book.book_name)))
+                        lambda: self.search_books(sorted(show_lib, key=lambda book: book.book_name)))
         self.add_button(main_frame, 'sort by author', 12, 1, 3, 1,
                         lambda: self.search_books(sorted(show_lib, key=lambda book: book.book_auth)))
         self.add_button(main_frame, 'sort by year', 12, 1, 3, 2,
@@ -186,8 +220,8 @@ class Interface:
         self.add_button(main_frame, 'sort by description', 12, 1, 3, 3,
                         lambda: self.search_books(sorted(show_lib, key=lambda book: book.book_desc)))
 
-        self.add_button(main_frame, 'Search book', 12, 1, 4, 0, lambda: self.lib_filter())
-        self.add_button(main_frame, 'Clear search', 12, 1, 4, 1, lambda: self.search_books(self.__full_lib))
+        self.add_button(main_frame, 'Search book', 12, 1, 5, 0, lambda: self.lib_filter())
+        self.add_button(main_frame, 'Clear search', 12, 1, 5, 1, lambda: self.search_books(self.__full_lib))
         table_frame = tk.Frame(self.root)
         canvas = tk.Canvas(table_frame)
         y_scrollbar = tk.Scrollbar(table_frame, orient="vertical", command=canvas.yview)
@@ -196,11 +230,11 @@ class Interface:
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=y_scrollbar.set)
         for rw in range(len(show_lib)):
-            addition_ = self.add_textbox(scrollable_frame, str(rw + 1), 3, 2, rw, 0)
+            self.add_textbox(scrollable_frame, str(rw + 1), 3, 2, rw, 0)
             row_insertion = (show_lib[rw].book_name, show_lib[rw].book_auth,
                              show_lib[rw].book_year, show_lib[rw].book_desc)
             for cl in range(4):
-                addition_ = self.add_textbox(scrollable_frame, row_insertion[cl], 24 if cl == 3 else 16, 2, rw, cl + 1)
+                self.add_textbox(scrollable_frame, row_insertion[cl], 24 if cl == 3 else 16, 2, rw, cl + 1)
             self.add_button(scrollable_frame, 'Edit', 3, 2, rw, 5,
                             lambda r=rw: self.edit_screen(show_lib[r].book_name,
                                                           show_lib[r].book_auth,
@@ -211,10 +245,31 @@ class Interface:
                                                            show_lib[r].book_auth,
                                                            show_lib[r].book_year,
                                                            show_lib[r].book_desc))
+            self.add_button(scrollable_frame, 'To JSON', 6, 2, rw, 7,
+                            lambda r=rw: self.book_to_json(show_lib[r].book_name,
+                                                           show_lib[r].book_auth,
+                                                           show_lib[r].book_year,
+                                                           show_lib[r].book_desc))
         table_frame.pack(fill="both")
         canvas.pack(side="left", fill="both", expand=True)
         y_scrollbar.pack(side="right", fill="y")
+        if self.__debug_mode:
+            self.log = f'search books screen created on {time.asctime()}\n'
         self.root.mainloop()
+
+    def export_json(self):
+        """
+        enters DBconnector JSON export procedure
+        :return: None
+        """
+        self.db_conn.export_to_json()
+
+    def export_csv(self):
+        """
+        enters DBconnector CSV export procedure
+        :return: None
+        """
+        self.db_conn.export_to_csv()
 
     class pop_up:
         """
@@ -232,6 +287,7 @@ class Interface:
             label.pack(side="top", fill="x", pady=10)
             but_ = tk.Button(self.pop_up_root, text="Ok", command=lambda: self.destroy_addition(obj_, inf_))
             but_.pack()
+            obj_.log += f'{inf_} on {time.asctime()}\n'
             self.pop_up_root.mainloop()
 
         def destroy_addition(self, obj_, inf_):
@@ -242,7 +298,8 @@ class Interface:
             :return: None
             """
             self.pop_up_root.destroy()
-            if "database" in inf_: obj_.back_to_main()
+            if "database" in inf_:
+                obj_.back_to_main()
 
     # Library Methods
     def lib_append(self):
@@ -264,8 +321,51 @@ class Interface:
                 self.__full_lib.append(book_to_add)
                 self.__full_lib = sorted(self.__full_lib, key=lambda book: book.book_name)
                 self.clear_textboxes()
+                self.log = f'the book {book_to_add.book_name} added on {time.asctime()}\n'
         else:
             self.pop_up("Please fill book name and author fields", self)
+
+    def lib_append_from_json(self, path):
+        """
+        overall method to import book from JSON file
+        :param path: path to the file
+        :return: None
+        """
+        if os.path.isfile(path):
+            with open(path) as json_file:
+                data = json.load(json_file)
+            if isinstance(data, list):
+                for dct in data:
+                    self.import_single_from_json(dct, path)
+            else:
+                self.import_single_from_json(data, path)
+        else:
+            self.log = f'cannot import data from JSON file {path} {time.asctime()}\n'
+            self.pop_up("JSON file doesn't exists, please choose the correct file", self)
+
+    def import_single_from_json(self, dct, path):
+        """
+        appends the books from json file
+        :param dct: eac book dictionary
+        :param path: path to the JSON file
+        :return: None
+        """
+        if not isinstance(dct, dict):
+            self.log = f'JSON file {path} contains data in incorrect format {time.asctime()}\n'
+            return None
+        name_ = dct.get('name', '')
+        auth_ = dct.get('author', '')
+        year_ = int(dct.get('year', ''))
+        desc_ = dct.get('description', '')
+        if all([name_, auth_, year_]):
+            self.__book_name_text.insert('end-1c', name_)
+            self.__book_author_text.insert('end-1c', auth_)
+            self.__book_year_text.insert('end-1c', year_)
+            self.__book_desc_text.insert('end-1c', desc_)
+            self.lib_append()
+        else:
+            self.log = f'JSON file {path} contains incorrect columns {time.asctime()}\n'
+            self.pop_up("the naming in JSON file is incorrect", self)
 
     def lib_filter(self):
         """
@@ -284,6 +384,8 @@ class Interface:
                     and str(yr) in str(book_.book_year)
                     and desc in book_.book_desc]):
                 lib_to_show.append(book_)
+        if self.__debug_mode:
+            self.log = f'lib filtered on {time.asctime()}\n'
         self.search_books(lib_to_show)
 
     def change_entry(self, name_old: str, auth_old: str, year_old: str, desc_old: str):
@@ -310,6 +412,7 @@ class Interface:
                 book_id = self.__full_lib[ind_].bookID
                 self.__full_lib[ind_] = Book(book_id, nm, auth, yr, des)
                 self.db_conn.change_entry(nm, auth, yr, des, book_id)
+                self.log = f'the book {nm} changed on {time.asctime()}\n'
                 self.search_books(self.__full_lib)
         else:
             self.pop_up("Please fill book name and author fields", self)
@@ -330,7 +433,22 @@ class Interface:
         book_id = self.__full_lib[ind_].bookID
         self.db_conn.remove_entry(book_id)
         self.__full_lib.pop(ind_)
+        self.log = f'the book {name_} removed on {time.asctime()}\n'
         self.search_books(self.__full_lib)
+
+    def book_to_json(self, nm: str, auth: str, yr: int, desc: str):
+        """
+        writes the json data into the separate file
+        :param nm: book name
+        :param auth: book author
+        :param yr: book year
+        :param desc: book description
+        :return: None
+        """
+        dict_to_write = {'name': nm, 'author': auth, 'year': yr, 'description': desc}
+        with open(f'{nm}.txt', 'w') as f:
+            json.dump(dict_to_write, f)
+        self.log = f'the book {nm} moved to the JSON file {time.asctime()}\n'
 
     @staticmethod
     def joined_list(lst: list):
@@ -370,208 +488,14 @@ class Interface:
         return None
 
     def import_func_db(self):
+        """
+        starter function to read the data from database
+        :return: list for full_lib
+        """
         result = []
-        lst_from_sql = sorted(self.db_conn.read_db('', '', '', ''))
+        lst_from_sql = sorted(self.db_conn.read_db('', '', 0, ''))
         for cur_row in lst_from_sql:
             result.append(Book(cur_row[0], cur_row[1], cur_row[2], cur_row[3], cur_row[4]))
+        if self.__debug_mode:
+            self.log = f'the data imported form the database on {time.asctime()}\n'
         return result
-
-
-class DBConnector:
-    def __init__(self, obj_: Interface):
-        self.interface = obj_
-        self.db_name = self.interface.db_name
-        self.db_table_name = self.interface.db_table_name
-        self.conn = None
-        self.curs_ = None
-
-    @property
-    def db_name(self):
-        return self._db_name
-
-    @db_name.setter
-    def db_name(self, value: str):
-        if value[-3:] != '.db':
-            value += '.db'
-        self._db_name = value
-        self.interface.db_name = value
-
-    @property
-    def db_table_name(self):
-        return self._db_table_name
-
-    @db_table_name.setter
-    def db_table_name(self, value: str):
-        self._db_table_name = value
-        self.interface.db_table_name = value
-
-    def connect_to_the_db(self):
-        with closing(sqlite3.connect(self.db_name)) as self.conn:
-            self.curs_ = self.conn.cursor()
-            self.curs_.execute(f"""
-                CREATE TABLE IF NOT EXISTS {self.db_table_name} (
-                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    BookName TEXT,
-                    BookAuthor TEXT,
-                    BookYear INTEGER,
-                    BookDesc TEXT);
-            """)
-            self.check_table()
-
-    def check_table(self):
-        try:
-            self.curs_.execute(f"SELECT ID, BookName, BookAuthor, BookYear, BookDesc FROM {self.db_table_name};")
-            if self.conn:
-                self.interface.pop_up("database connected", self.interface)
-        except sqlite3.OperationalError:
-            self.db_table_name = ''
-            self.interface.pop_up("Not all required columns exists in the table in database", self.interface)
-
-    def read_db(self, nm: str, auth: str, yr: int, desc: str):
-        nm = nm if nm != '' else '%'
-        auth = auth if auth != '' else '%'
-        yr = yr if yr != '' else '%'
-        desc = desc if desc != '' else '%'
-        with closing(sqlite3.connect(self.db_name)) as self.conn:
-            self.curs_ = self.conn.cursor()
-            result = list(self.curs_.execute(f"""SELECT ID, BookName, BookAuthor, BookYear, BookDesc
-                                FROM {self.db_table_name}
-                                WHERE BookName LIKE '{nm}'
-                                AND BookAuthor LIKE '{auth}'
-                                AND BookYear LIKE '{yr}'
-                                AND BookDesc LIKE '{desc}';"""))
-        return result
-
-    def append_to_db(self, nm: str, auth: str, yr: int, desc: str):
-        """
-        appends to the database
-        :param nm: name to add
-        :param auth: author to add
-        :param yr: year to add
-        :param desc: description to add
-        :return: None
-        """
-        query_string = self.construct_sql_sting(nm=nm, auth=auth, yr=yr, desc=desc, type=0)
-        self.change_db(query_string)
-
-    def change_entry(self, nm: str, auth: str, yr: int, desc: str, id_: int):
-        """
-        changes entry in database
-        :param nm: name to change
-        :param auth: author to change
-        :param yr: year to change
-        :param desc: description to change
-        :param id_: id of the record
-        :return: None
-        """
-        query_string = self.construct_sql_sting(nm=nm, auth=auth, yr=yr, desc=desc, type=1,ID_to_change=id_)
-        self.change_db(query_string)
-
-    def remove_entry(self, id_: int):
-        """
-        rmove the entry from database
-        :param id_: Id to remove
-        :return: None
-        """
-        query_string = self.construct_sql_sting(type=1, ID_to_change=id_)
-        self.change_db(query_string)
-
-    def construct_sql_sting(self,
-                            nm = None, auth = None, yr = None, desc = None, type = None, ID_to_change = None):
-        """
-        construct the query for an update method
-        :param nm: name
-        :param auth: author
-        :param yr: year
-        :param desc: deescription
-        :param type: type of operation: 0 - append, 1 - change, 2 - remove
-        :param ID_to_change: Id to search in database
-        :return: query string
-        """
-        result = ""
-        # Add New
-        if type == 0:
-            result = f"""INSERT INTO {self.db_table_name}(
-                                                BookName,
-                                                BookAuthor,
-                                                BookYear,
-                                                BookDesc)
-                                            VALUES ('{nm}', '{auth}', {yr}, '{desc}');"""
-        # change existing one
-        elif type == 1:
-            result = f"""
-                    UPDATE {self.db_table_name}
-                    SET BookName = '{nm}', 
-                        BookAuthor = '{auth}',
-                        BookYear = '{yr}',
-                        BookDesc = '{desc}'
-                    WHERE ID = {ID_to_change};"""
-        # remove
-        elif type == 2:
-            result = f"""
-                    DELETE FROM {self.db_table_name}
-                    WHERE ID = {ID_to_change};"""
-        return result
-
-    def change_db(self, sql_: str):
-        """
-        updates the database
-        :param sql_: query string to execute
-        :return: None
-        """
-        with closing(sqlite3.connect(self.db_name)) as self.conn:
-            self.curs_ = self.conn.cursor()
-            self.curs_.execute(sql_)
-            self.conn.commit()
-
-
-class Book:
-    def __init__(self, id: int, name: str, auth: str, year: int, desc: str):
-        self._bookID =  id
-        self._book_name = name
-        self._book_auth = auth
-        self._book_year = year
-        self._book_desc = desc
-
-    @property
-    def bookID(self):
-        return self._bookID
-
-    @bookID.setter
-    def bookID(self, value: int):
-        self._bookID = value
-
-    @property
-    def book_name(self):
-        return self._book_name
-
-    @book_name.setter
-    def book_name(self, value: str):
-        self._book_name = value
-
-    @property
-    def book_auth(self):
-        return self._book_auth
-
-    @book_auth.setter
-    def book_auth(self, value: str):
-        self._book_auth = value
-
-    @property
-    def book_year(self):
-        return self._book_year
-
-    @book_year.setter
-    def book_year(self, value: int):
-        if isinstance(value, (int, float)) and len(str(value)) == 4:
-            self._book_year = value
-        else:
-            raise ValueError('Please enter the correct year')
-
-    @property
-    def book_desc(self):
-        return self._book_desc
-
-    @book_desc.setter
-    def book_desc(self, value: str):
-        self._book_desc = value
